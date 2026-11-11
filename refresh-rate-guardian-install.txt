@@ -1,0 +1,23 @@
+move refresh-rate-guardian.py to :
+~/.local/bin/refresh-rate-guardian.py
+
+move refresh-rate-guardian.service to:
+~/.config/systemd/user/refresh-rate-guardian.service
+
+then run these commands:
+
+systemctl --user daemon-reload
+
+systemctl --user enable --now refresh-rate-guardian.service
+
+check if its working:
+
+systemctl --user status refresh-rate-guardian.service
+
+check the live logs:
+
+journalctl --user -u refresh-rate-guardian.service -f
+
+check current monitor config:
+
+gdctl show
