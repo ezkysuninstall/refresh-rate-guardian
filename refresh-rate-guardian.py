@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import argparse
@@ -24,11 +25,13 @@ def command(args):
         text=True,
         timeout=20
     )
+
     if result.returncode != 0:
         raise RuntimeError(
             result.stderr.strip() or result.stdout.strip()
             or f"Command failed: {args}"
         )
+
     return result.stdout
 
 
@@ -40,6 +43,7 @@ def parse_monitor_output(output, include_modes=False):
         header = re.search(
             r'[├└]──Monitor\s+(\S+)\s+\(', line
         )
+
         if not header:
             continue
 
@@ -71,6 +75,7 @@ def parse_monitor_output(output, include_modes=False):
                 block,
                 re.S
             )
+
             if mode_section:
                 info["modes"] = re.findall(
                     r'(\d+x\d+@[0-9.]+)',
@@ -102,9 +107,18 @@ def parse_logical_monitors(output):
         position = re.search(
             r'Position:\s*\((-?\d+),\s*(-?\d+)\)', block
         )
-        scale = re.search(r'Scale:\s*([0-9.]+)', block)
-        transform = re.search(r'Transform:\s*(\S+)', block)
-        primary = re.search(r'Primary:\s*(yes|no)', block)
+
+        scale = re.search(
+            r'Scale:\s*([0-9.]+)', block
+        )
+
+        transform = re.search(
+            r'Transform:\s*(\S+)', block
+        )
+
+        primary = re.search(
+            r'Primary:\s*(yes|no)', block
+        )
 
         connectors = re.findall(
             r'[├└]──([A-Za-z0-9_.-]+)\s+\(', block
@@ -131,8 +145,11 @@ def mode_details(mode):
     match = re.fullmatch(
         r'(\d+)x(\d+)@([0-9.]+)', mode
     )
+
     if not match:
-        raise ValueError(f"Unrecognised monitor mode: {mode}")
+        raise ValueError(
+            f"Unrecognised monitor mode: {mode}"
+        )
 
     return (
         int(match.group(1)),
@@ -150,13 +167,16 @@ def inspect_configuration():
     groups = parse_logical_monitors(current_output)
 
     if not groups:
-        raise RuntimeError("No active logical monitors were found.")
+        raise RuntimeError(
+            "No active logical monitors were found."
+        )
 
     changes = {}
     needs_change = False
 
     for group in groups:
         for connector in group["connectors"]:
+
             if connector not in current or connector not in available:
                 raise RuntimeError(
                     f"Missing monitor information for {connector}."
@@ -202,8 +222,10 @@ def inspect_configuration():
         return None, changes
 
     args = [
-        GDCTL, "set",
-        "--layout-mode", "logical"
+        GDCTL,
+        "set",
+        "--layout-mode",
+        "logical"
     ]
 
     for group in groups:
@@ -241,20 +263,29 @@ def run_once(dry_run=False):
         )
 
     if args is None:
-        log.info("All active monitors are already at maximum refresh rate.")
+        log.info(
+            "All active monitors are already at maximum refresh rate."
+        )
         return
 
-    verify_args = args + ["--verify"]
+    # Validate the proposed configuration first.
+    verify_args = args[:2] + ["--verify"] + args[2:]
 
     log.info("Validating proposed configuration...")
     command(verify_args)
 
     if dry_run:
-        log.info("Dry run successful. No display settings were changed.")
+        log.info(
+            "Dry run successful. No display settings were changed."
+        )
         return
 
-    log.info("Applying persistent maximum refresh-rate configuration...")
-    output = command(args + ["--persistent"])
+    # Apply without --persistent to avoid GNOME confirmation dialogs.
+    log.info(
+        "Applying maximum refresh-rate configuration..."
+    )
+
+    output = command(args)
 
     if output.strip():
         log.info(output.strip())
@@ -264,8 +295,17 @@ def run_once(dry_run=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
+
+    parser.add_argument(
+        "--once",
+        action="store_true"
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true"
+    )
+
     options = parser.parse_args()
 
     if options.once:
